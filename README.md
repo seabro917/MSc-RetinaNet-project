@@ -24,7 +24,7 @@
 - Normalize the input mammogram as
   $$M_{out} = \frac{M_{in}-\mu}{\sigma}$$
   where $\mu$ and $\sigma$ are the `mean` and `standard deviation` of the mammograms' pixel value in the training dataset.
-  > Note: When calculating the values of $\mu$ and $\sigma$, the pixels of the black background on the mammogram, which have values of `0`, are ignored. This is due to the reason that on a mammogram, the area deserves our attention is the body tissue part, not the background. At the same time, most of the time, black background would take up more than half the space of a mammogram, the calculated statistical representation of the mammogram will be biased if the background information is counted.
+> Note: When calculating the values of $\mu$ and $\sigma$, the pixels of the black background on the mammogram, which have values of `0`, are ignored. This is due to the reason that on a mammogram, the area deserves our attention is the body tissue part, not the background. At the same time, most of the time, black background would take up more than half the space of a mammogram, the calculated statistical representation of the mammogram will be biased if the background information is counted.
 
 ## Two-stage training strategy
 Due to the large size of the mammogram, in the training stage, for each epoch, the GPU memory is only able to hold one single training mammogram, this makes it difficult to stabilize the trained mean and trained variance in the batch normalization layer.
