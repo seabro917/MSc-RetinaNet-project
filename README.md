@@ -48,7 +48,7 @@ Cropped each positive sample (mammogram containing mass) five times, each negati
 ## Some training history results
 ### Tuning hyperparameters of focal loss
 <p align = "center">
- <img src = "RetinaNet_porject_figs/different_gamma_loss.jpg" width = "400"/> <img src = "RetinaNet_porject_figs/different_gamma_mAP.jpg" width = "426"/>
+ <img src = "RetinaNet_porject_figs/different_gamma_loss.jpg" width = "380"/> <img src = "RetinaNet_porject_figs/different_gamma_mAP.jpg" width = "400"/>
 </p>
 
 <p align="center">
