@@ -19,12 +19,49 @@
  <sub>Fig. 1: Architecture of the RetinaNet.</sub>
 </p>
 
+## Focal loss
+For the binary-classification problems, traditionally we apply cross Entropy (CE) as the loss function, which is defined as follows:
+
+$$\begin{equation} 
+  CE(p, y) = \begin{cases} 
+      -\log_2 p, & \text{if } y = 1 \\
+      -\log_2 (1-p), & \text{otherwise}
+   \end{cases}
+\end{equation}$$
+
+
+where $y$ is the true label for the samples, which takes on value $1$ or $-1$. $p$ is the probability of the sample to be from class $1$ estimated by the model, which has a value in the range $[0,1]$. If we redefine another variable $P_t$, as follows:
+
+$$\begin{equation}
+  P_t = \begin{cases} 
+       p, & \text{if } y = 1 \\
+      1-p, & \text{otherwise}
+   \end{cases}
+\end{equation}$$
+
+then the CE loss can be rewriten as: $CE(p,y) = - \log_2 P_t$. For small object detection tasks, this has two major issues:
+- Large number of background samples, or in other words, easy-classified samples ($P_t \geq 0.5$), contribute too much loss.
+- Because the total loss is almost "dominated" and "overwhelmed" by the loss contributed by the background samples, model can hardly learn from the foreground samples.
+
+Such a problem can be summarized as "imbalanced class issue". 
+In order to address this problem, in focal loss, a weighting factor is multiplied: $FL(P_t) = -\alpha_t(1-P_t)^\gamma \log_2 P_t$, where 
+
+$$\begin{equation} 
+  \alpha_t = \begin{cases} 
+       \alpha, & \text{if } y = 1 \\
+      1-\alpha, & \text{otherwise}
+   \end{cases}
+\end{equation}$$
+
+> In the focal loss, when a sample is misclassified, which implies $P_t$ is small, the value of the weighting factor is close to $1$, making the FL similar to CE. When an easy sample is correctly classified, the weighting factor tends to $0$, which will scale down the loss contributed by the easy-classified samples, making the model focus more on and learn more from the hard-classified samples. Compared with CE, in FL, the loss contributed by the misclassified samples is almost unchanged while the loss contributed by the easy-classified samples was largely scaled down. The smooth factor $\gamma$ is here for adjusting the extent to which we want our down-scaling modulator to work.
+
+
 ## Some pre-processing
 - Duplicate the one-channel gray-scale mammogram into three channels to mimic a colored image, and feed into the model.
 - Normalize the input mammogram as
   $$M_{out} = \frac{M_{in}-\mu}{\sigma}$$
   where $\mu$ and $\sigma$ are the `mean` and `standard deviation` of the mammograms' pixel value in the training dataset.
-> Note: When calculating the values of $\mu$ and $\sigma$, the pixels of the black background on the mammogram, which have values of `0`, are ignored. This is due to the reason that on a mammogram, the area deserves our attention is the body tissue part, not the background. At the same time, most of the time, black background would take up more than half the space of a mammogram, the calculated statistical representation of the mammogram will be biased if the background information is counted.
+> Note: When calculating the values of $\mu$ and $\sigma$, the pixels of the black background on the mammogram, which have values of `0`, are ignored. This is due to the reason that on a mammogram, the area that deserves our attention is the body tissue part, not the background. At the same time, most of the time, black background would take up more than half the space of a mammogram, and the calculated statistical representation of the mammogram will be biased if the background information is counted.
 
 ## Two-stage training strategy
 Due to the large size of the mammogram, in the training stage, for each epoch, the GPU memory is only able to hold one single training mammogram, this makes it difficult to stabilize the trained mean and trained variance in the batch normalization layer.
@@ -37,7 +74,7 @@ Due to the large size of the mammogram, in the training stage, for each epoch, t
   - Phase 2: Fine-tune the model on full-size mammograms (freeze the backbone network).
 
 ## Image patches (used for pre-training)
-Cropped each positive sample (mammogram containing mass) five times, each negative sample two times. When the positive sample is cropped, it is guaranteed that the cropped patch will contain the complete mass, not only a portion of the mass. All the resulting image patches are of size `1024*1024` $\text{pixel}^2$.
+Cropped each positive sample (mammogram containing mass) five times, and each negative sample two times. When the positive sample is cropped, it is guaranteed that the cropped patch will contain the complete mass, not only a portion of the mass. All the resulting image patches are of size `1024*1024` $\text{pixel}^2$.
 <p align = "center">
  <img src = "RetinaNet_porject_figs/patch.png" width = "700"/>
 </p>
@@ -55,6 +92,18 @@ Cropped each positive sample (mammogram containing mass) five times, each negati
  <sub>Fig. 3: Training history with different focal loss parameters settings.</sub>
 </p>
 
+| Backbone networks | Epoch number that gives best model | mAP on testing set | Training time/epoch |
+|:-----------------:|:----------------------------------:|:------------------:|:-------------------:| 
+| ResNet-50         | 39th epoch                         | 74.52%             | 49 mins             |
+| ResNet-101        | 39th epoch                         | 68.23%             | 50 mins             |
+| VGG-16            | 40th epoch                         | 44.68%             | 50 mins             |
+| VGG-19            | 36th epoch                         | 58.63%             | 51 mins             |
+ 
+<p align="center">
+<sub>Table. 1: Testing mAP of models with four different backbone networks.</sub>
+</p>
+
+
 ### Anchor optimization and two-stage training strategy
 Also use the anchor optimization introduced in this [repo](https://github.com/martinzlocha/anchor-optimization).
 
@@ -65,8 +114,21 @@ Also use the anchor optimization introduced in this [repo](https://github.com/ma
 <p align="center">
  <sub>Fig. 4: Training history with anchor optimization (left) and two-stage training strategy (right).</sub>
 </p>
-Both anchor optimization and two-stage training strategy can produce more stable converged results.
+
+| Training strategy    | Number of trainable parameters | Training time/epoch | 
+|:--------------------:|:------------------------------:|:-------------------:|
+| Resize mammograms    | 36,276,717                     | 49 mins             |
+| Patches pre-training | 36,276,717                     | 21 mins             | 
+| Fine-tuning          | 12,821,805                     | 67 mins             | 
+
  
+<p align="center">
+<sub>Table. 2: Comparison between resized training and two-phase training (using ResNet-50 as backbone network.</sub>
+</p>
+
+
+Both anchor optimization and two-stage training strategy can produce more stable converged results.
+
 ## Some inference results visualization
 
 <p align = "center">
